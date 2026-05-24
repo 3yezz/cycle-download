@@ -2,8 +2,10 @@ package com.ed.cycle;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
@@ -112,6 +114,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        PillReminderReceiver.createChannel(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        SharedPreferences prefs = getSharedPreferences(PillActionReceiver.PREFS_ACTIONS, MODE_PRIVATE);
+        String pending = prefs.getString(PillActionReceiver.KEY_PENDING, "");
+        if (!pending.isEmpty()) {
+            prefs.edit().remove(PillActionReceiver.KEY_PENDING).apply();
+            String safeJson = pending.replace("\\", "\\\\").replace("'", "\\'");
+            String js = "window.applyPillAction && window.applyPillAction('" + safeJson + "')";
+            if (webView != null) webView.post(() -> webView.evaluateJavascript(js, null));
+        }
     }
 
     @Override
@@ -128,6 +145,48 @@ public class MainActivity extends AppCompatActivity {
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
             } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public void scheduleReminder(String timeStr) {
+            try {
+                String[] parts = timeStr.split(":");
+                int hour = Integer.parseInt(parts[0]);
+                int minute = Integer.parseInt(parts[1]);
+
+                SharedPreferences prefs = getSharedPreferences(BootReceiver.PREFS_CONFIG, MODE_PRIVATE);
+                prefs.edit().putInt("hour", hour).putInt("minute", minute)
+                        .putBoolean("enabled", true).apply();
+
+                PillReminderReceiver.schedule(MainActivity.this, hour, minute);
+
+                if (Build.VERSION.SDK_INT >= 33) {
+                    if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                            != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(
+                                new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 200);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public void cancelReminder() {
+            SharedPreferences prefs = getSharedPreferences(BootReceiver.PREFS_CONFIG, MODE_PRIVATE);
+            prefs.edit().putBoolean("enabled", false).apply();
+            PillReminderReceiver.cancel(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public String getPendingPillActions() {
+            SharedPreferences prefs = getSharedPreferences(PillActionReceiver.PREFS_ACTIONS, MODE_PRIVATE);
+            return prefs.getString(PillActionReceiver.KEY_PENDING, "");
+        }
+
+        @JavascriptInterface
+        public void clearPendingPillActions() {
+            SharedPreferences prefs = getSharedPreferences(PillActionReceiver.PREFS_ACTIONS, MODE_PRIVATE);
+            prefs.edit().remove(PillActionReceiver.KEY_PENDING).apply();
         }
     }
 }

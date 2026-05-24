@@ -1,5 +1,5 @@
 ﻿const { createElement: h, useState, useEffect, useCallback, useMemo, useRef, Component } = React;
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 const API = 'https://e-d.fr';
 const RELEASE_MANIFEST_URL = `https://e-d.fr/cycle/releases.json?date=${Date.now()}`;
 const DOWNLOAD_FALLBACK_URL = 'https://github.com/3yezz/cycle-download/releases/latest';
@@ -171,6 +171,7 @@ function defaultData() {
       startDate: '',
       packDays: 21,
       pauseDays: 7,
+      reminderEnabled: false,
     },
     pillLog: {},
     symptoms: {},
@@ -1430,6 +1431,11 @@ function PillTab({ data, onUpdate }) {
     const newPill = { ...form, enabled: true };
     onUpdate({ ...data, pill: newPill });
     setShowSetup(false);
+    if (form.reminderEnabled && window.EDcycle?.scheduleReminder) {
+      window.EDcycle.scheduleReminder(form.time || '08:00');
+    } else if (!form.reminderEnabled && window.EDcycle?.cancelReminder) {
+      window.EDcycle.cancelReminder();
+    }
   }
 
   function markToday(taken) {
@@ -1441,6 +1447,7 @@ function PillTab({ data, onUpdate }) {
     onUpdate({ ...data, pill: { ...defaultData().pill }, pillLog: {} });
     setForm({ ...defaultData().pill });
     setShowSetup(true);
+    if (window.EDcycle?.cancelReminder) window.EDcycle.cancelReminder();
   }
 
   function upd(k, v) { setForm(p => ({ ...p, [k]: v })); }
@@ -1543,6 +1550,21 @@ function PillTab({ data, onUpdate }) {
       h('div', { className: 'field-row' },
         h('div', { className: 'field-label' }, 'Heure de prise'),
         h('input', { className: 'inp', type: 'time', value: form.time, onChange: e => upd('time', e.target.value) })
+      ),
+
+      h('div', { className: 'field-row' },
+        h('div', { className: 'field-label' }, 'Rappel quotidien'),
+        h('div', { className: 'toggle-switch-row' },
+          h('label', { className: 'toggle-switch' },
+            h('input', { type: 'checkbox', checked: !!form.reminderEnabled, onChange: e => upd('reminderEnabled', e.target.checked) }),
+            h('span', { className: 'toggle-slider' })
+          ),
+          h('span', { className: 'toggle-switch-label' },
+            form.reminderEnabled
+              ? `Notification à ${form.time || '08:00'} chaque jour`
+              : 'Aucune notification'
+          )
+        )
       ),
 
       form.type === 'contraceptive' && h('div', { style: { display: 'flex', gap: '10px' } },
@@ -2227,6 +2249,27 @@ function App() {
     setTheme(next.settings.theme || 'system');
   }, [me?.id]);
 
+  useEffect(() => {
+    window.applyPillAction = (json) => {
+      try { window.dispatchEvent(new CustomEvent('pillAction', { detail: JSON.parse(json) })); } catch(e) {}
+    };
+    const handler = (e) => {
+      const action = e.detail;
+      setData(prev => {
+        const newLog = { ...prev.pillLog, [action.date]: { taken: action.taken, takenAt: action.takenAt || null } };
+        const newData = { ...prev, pillLog: newLog };
+        saveData(newData, me?.id);
+        return newData;
+      });
+    };
+    window.addEventListener('pillAction', handler);
+    if (window.EDcycle?.getPendingPillActions) {
+      const pending = window.EDcycle.getPendingPillActions();
+      if (pending) { window.EDcycle.clearPendingPillActions(); window.applyPillAction(pending); }
+    }
+    return () => window.removeEventListener('pillAction', handler);
+  }, [me?.id]);
+
   function onUpdate(newData) {
     setData(newData);
     saveData(newData, me?.id);
@@ -2282,6 +2325,7 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary, null, h(App)));
+
 
 
 
