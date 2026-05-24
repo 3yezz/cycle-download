@@ -1,5 +1,5 @@
 ﻿const { createElement: h, useState, useEffect, useCallback, useMemo, useRef, Component } = React;
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 const API = 'https://e-d.fr';
 const RELEASE_MANIFEST_URL = `https://e-d.fr/cycle/releases.json?date=${Date.now()}`;
 const DOWNLOAD_FALLBACK_URL = 'https://github.com/3yezz/cycle-download/releases/latest';
@@ -535,7 +535,7 @@ function BottomNav({ tab, setTab }) {
     { id: 'pill',     icon: Icon.pill, label: 'Pilule' },
     { id: 'stats',    icon: Icon.chart, label: 'Stats' },
     { id: 'settings', icon: Icon.settings, label: 'Régl.' },
-    { id: 'account',  icon: Icon.user, label: 'Compte' },
+    //{ id: 'account',  icon: Icon.user, label: 'Compte' },
   ];
   return h('div', { className: 'bottom-nav' },
     h('div', { className: 'bottom-nav-items' },
@@ -723,7 +723,9 @@ const DEFAULT_SYMPTOM = {
   backPain: false,
   acne: false,
   appetite: false,
-  notes: ''
+  notes: '',
+  crises: [],
+  treatments: [],
 };
 const PAIN_LABELS = ['Aucune', 'Légère', 'Modérée', 'Forte', 'Intense'];
 const FATIGUE_LABELS = ['Aucune', 'Légère', 'Modérée', 'Forte', 'Épuisée'];
@@ -1045,9 +1047,14 @@ function SymptomModal({ dateStr, symptom, onSave, onClose }) {
     }, inlineIcon(item.icon({ size: 14 }), item.label));
 
   function renderPage0() {
+    const crises = s.crises || [];
+    function addCrisis() { upd('crises', [...crises, { time: '', duration: '', relief: 'unknown' }]); }
+    function updateCrisis(i, k, v) { upd('crises', crises.map((c, idx) => idx === i ? { ...c, [k]: v } : c)); }
+    function removeCrisis(i) { upd('crises', crises.filter((_, idx) => idx !== i)); }
+
     return [
       h('div', { key: 'pain', className: 'modal-section' },
-        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pain({ size: 14 }), 'Douleur')),
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pain({ size: 14 }), 'Douleur globale')),
         h('div', { className: 'rating-row' },
           PAIN_LABELS.map((l, i) =>
             h('div', { key: i, className: `rating-btn${s.pain === i ? ' active' : ''}`, onClick: () => upd('pain', i) }, l)
@@ -1055,20 +1062,29 @@ function SymptomModal({ dateStr, symptom, onSave, onClose }) {
         )
       ),
       h('div', { key: 'endo', className: 'modal-section' },
-        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pain({ size: 14 }), 'Endométriose / crise')),
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pain({ size: 14 }), 'Zones de douleur')),
         h('div', { className: 'toggle-row' },
-          h('button', { key: 'flare', type: 'button', className: `toggle-chip${s.endoFlare ? ' active' : ''}`, onClick: () => upd('endoFlare', !s.endoFlare) }, inlineIcon(Icon.alert({ size: 14 }), 'Crise endométriose')),
           ENDO_PAIN_AREAS.map(item => h(Toggle, { key: item.key, item }))
         )
       ),
-      h('div', { key: 'duration', className: 'modal-section modal-grid-2' },
-        h('div', null,
-          h('div', { className: 'modal-section-label' }, 'Durée douleur'),
-          h('input', { className: 'inp', placeholder: 'Ex : 2h, toute la journée', value: s.painDuration || '', onChange: e => upd('painDuration', e.target.value) })
-        ),
-        h('div', null,
-          h('div', { className: 'modal-section-label' }, 'Soulagement'),
-          h(CustomSelect, { options: RELIEF_OPTIONS.map(o => ({ value: o.v, label: o.l })), value: s.painRelief, onChange: v => upd('painRelief', v) })
+      h('div', { key: 'crises', className: 'modal-section' },
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.alert({ size: 14 }), 'Crises de la journée')),
+        h('div', { className: 'crisis-list' },
+          crises.map((c, i) =>
+            h('div', { key: i, className: 'crisis-item' },
+              h('div', { className: 'crisis-item-row' },
+                h('input', { className: 'inp crisis-time', type: 'time', value: c.time || '', placeholder: '--:--', onChange: e => updateCrisis(i, 'time', e.target.value) }),
+                h('input', { className: 'inp crisis-duration', placeholder: 'Durée…', value: c.duration || '', onChange: e => updateCrisis(i, 'duration', e.target.value) }),
+                h('button', { type: 'button', className: 'crisis-remove-btn', onClick: () => removeCrisis(i) }, '×')
+              ),
+              h(CustomSelect, {
+                options: RELIEF_OPTIONS.map(o => ({ value: o.v, label: o.l })),
+                value: c.relief || 'unknown',
+                onChange: v => updateCrisis(i, 'relief', v),
+              })
+            )
+          ),
+          h('button', { type: 'button', className: 'list-add-btn', onClick: addCrisis }, '+ Ajouter une crise')
         )
       ),
     ];
@@ -1123,10 +1139,33 @@ function SymptomModal({ dateStr, symptom, onSave, onClose }) {
   }
 
   function renderPage3() {
+    const treatments = s.treatments || [];
+    function addTreatment() { upd('treatments', [...treatments, { name: '', time: '' }]); }
+    function updateTreatment(i, k, v) { upd('treatments', treatments.map((t, idx) => idx === i ? { ...t, [k]: v } : t)); }
+    function removeTreatment(i) { upd('treatments', treatments.filter((_, idx) => idx !== i)); }
+
     return [
       h('div', { key: 'treatment', className: 'modal-section' },
-        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pill({ size: 14 }), 'Traitement pris pendant la crise')),
-        h('input', { className: 'inp', placeholder: 'Ex : Spasfon, ibuprofène, bouillotte...', value: s.painMedication || '', onChange: e => upd('painMedication', e.target.value) })
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pill({ size: 14 }), 'Traitements de la journée')),
+        h('datalist', { id: 'sym-treatment-suggestions' },
+          ALL_PILL_SUGGESTIONS.map(name => h('option', { key: name, value: name }))
+        ),
+        h('div', { className: 'treatment-list' },
+          treatments.map((t, i) =>
+            h('div', { key: i, className: 'treatment-item' },
+              h('input', {
+                className: 'inp treatment-name',
+                list: 'sym-treatment-suggestions',
+                placeholder: 'Médicament, bouillotte…',
+                value: t.name || '',
+                onChange: e => updateTreatment(i, 'name', e.target.value),
+              }),
+              h('input', { className: 'inp treatment-time', type: 'time', value: t.time || '', onChange: e => updateTreatment(i, 'time', e.target.value) }),
+              h('button', { type: 'button', className: 'crisis-remove-btn', onChange: () => removeTreatment(i), onClick: () => removeTreatment(i) }, '×')
+            )
+          ),
+          h('button', { type: 'button', className: 'list-add-btn', onClick: addTreatment }, '+ Ajouter un traitement')
+        )
       ),
       h('div', { key: 'notes', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.note({ size: 14 }), 'Notes')),
@@ -1767,10 +1806,11 @@ function StatsTab({ data }) {
       if (s.fatigueLevel > 0) { fatigueSum += Number(s.fatigueLevel || 0); fatigueDays++; }
       if (s.pain >= 2) symptomCounts.pain++;
       if (s.pain >= 3) symptomCounts.severePain++;
-      if (s.endoFlare) symptomCounts.endoFlare++;
+      if (s.endoFlare || s.crises?.length > 0) symptomCounts.endoFlare++;
       if (s.impact && s.impact !== 'none') symptomCounts.impact++;
-      if ((s.painMedication || '').trim()) symptomCounts.treatment++;
-      if (s.painRelief === 'partial' || s.painRelief === 'good') symptomCounts.treatmentHelped++;
+      if ((s.painMedication || '').trim() || s.treatments?.length > 0) symptomCounts.treatment++;
+      const reliefs = (s.crises || []).map(c => c.relief).concat([s.painRelief]);
+      if (reliefs.some(r => r === 'partial' || r === 'good')) symptomCounts.treatmentHelped++;
       if (s.mood === 'bad' || s.mood === 'irritable' || s.mood === 'anxious') symptomCounts.badMood++;
       ENDO_TRACKED_KEYS.forEach(k => {
         if (s[k]) symptomCounts[k]++;
@@ -1926,9 +1966,9 @@ function getAllSymptomEntries(data) {
 
 function buildMedicalSummary(data) {
   const entries = getAllSymptomEntries(data);
-  const severe = entries.filter(([, s]) => s.pain >= 3 || s.endoFlare);
+  const severe = entries.filter(([, s]) => s.pain >= 3 || s.endoFlare || s.crises?.length > 0);
   const impacted = entries.filter(([, s]) => s.impact && s.impact !== 'none');
-  const treatments = entries.filter(([, s]) => (s.painMedication || '').trim());
+  const treatments = entries.filter(([, s]) => (s.painMedication || '').trim() || s.treatments?.length > 0);
   const avg = (values) => values.length ? (values.reduce((a, v) => a + Number(v || 0), 0) / values.length).toFixed(1) : '-';
   const lines = [
     `Résumé EDcycle - ${todayStr()}`,
@@ -1949,8 +1989,12 @@ function buildMedicalSummary(data) {
         `douleur ${s.pain || 0}/4`,
         s.fatigueLevel ? `fatigue ${s.fatigueLevel}/4` : null,
         s.impact && s.impact !== 'none' ? `impact ${s.impact}` : null,
-        s.painMedication ? `traitement: ${s.painMedication}` : null,
-        s.painRelief && s.painRelief !== 'unknown' ? `soulagement: ${s.painRelief}` : null,
+        s.treatments?.length > 0
+          ? `traitements: ${s.treatments.map(t => t.name + (t.time ? ` (${t.time})` : '')).join(', ')}`
+          : s.painMedication ? `traitement: ${s.painMedication}` : null,
+        s.crises?.length > 0
+          ? `${s.crises.length} crise(s): ${s.crises.map(c => [c.time, c.duration].filter(Boolean).join(' ')).join(' / ')}`
+          : s.painRelief && s.painRelief !== 'unknown' ? `soulagement: ${s.painRelief}` : null,
       ].filter(Boolean).join(', ');
       return `- ${fmtDate(date)} : ${details}${s.notes ? ` | ${s.notes}` : ''}`;
     })),
@@ -2135,7 +2179,7 @@ function AccountTab({ me, token, data, onLogout, onDeleteLocal }) {
   const symptomDates = new Set(Object.keys(data.symptoms || {}));
   data.cycles.forEach(c => Object.keys(c.symptoms || {}).forEach(date => symptomDates.add(date)));
   const symptomDays = symptomDates.size;
-  const crisisDays = getAllSymptomEntries(data).filter(([, s]) => s.endoFlare || s.pain >= 3).length;
+  const crisisDays = getAllSymptomEntries(data).filter(([, s]) => s.endoFlare || s.crises?.length > 0 || s.pain >= 3).length;
   const pillTaken = Object.values(data.pillLog || {}).filter(v => v?.taken).length;
   const openOnlinePanel = () => {
     if (window.openEDAccountPanel) window.openEDAccountPanel(me);
@@ -2325,6 +2369,7 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary, null, h(App)));
+
 
 
 
