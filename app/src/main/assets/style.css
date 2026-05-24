@@ -224,9 +224,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-primar
 
 /* Bottom nav (mobile) */
 .bottom-nav {
-  display: none; height: var(--bottom-h); flex-shrink: 0;
-  background: var(--bg-card); border-top: 0.5px solid var(--border);
-  padding-bottom: var(--safe-b);
+    display: none;
+    height: calc(var(--bottom-h) + var(--safe-b));
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border-top: 0.5px solid var(--border);
+    padding-bottom: var(--safe-b);
 }
 .bottom-nav-items {
   display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));

@@ -1,5 +1,5 @@
 ﻿const { createElement: h, useState, useEffect, useCallback, useMemo, useRef, Component } = React;
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 const API = 'https://e-d.fr';
 const RELEASE_MANIFEST_URL = `https://e-d.fr/cycle/releases.json?date=${Date.now()}`;
 const DOWNLOAD_FALLBACK_URL = 'https://github.com/3yezz/cycle-download/releases/latest';
@@ -2282,6 +2282,7 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary, null, h(App)));
+
 
 
 

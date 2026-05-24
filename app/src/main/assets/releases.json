@@ -1,22 +1,22 @@
 {
-    "version":  "1.0.4",
-    "notes":  "Nouvelle version EDcycle 1.0.4.",
+    "version":  "1.0.5",
+    "notes":  "Nouvelle version EDcycle 1.0.5.",
     "assets":  {
                    "android":  {
-                                   "version":  "1.0.4",
-                                   "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.4/edcycle-1.0.4-android.apk"
+                                   "version":  "1.0.5",
+                                   "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.5/edcycle-1.0.5-android.apk"
                                },
                    "windows":  {
-                                   "version":  "1.0.4",
-                                   "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.4/edcycle-1.0.4-windows.exe"
+                                   "version":  "1.0.5",
+                                   "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.5/edcycle-1.0.5-windows.exe"
                                },
                    "linux":  {
-                                 "version":  "1.0.4",
-                                 "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.4/edcycle-1.0.4-linux.tar.gz"
+                                 "version":  "1.0.5",
+                                 "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.5/edcycle-1.0.5-linux.tar.gz"
                              },
                    "mac":  {
-                               "version":  "1.0.4",
-                               "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.4/edcycle-1.0.4-mac.dmg"
+                               "version":  "1.0.5",
+                               "url":  "https://github.com/3yezz/cycle-download/releases/download/v1.0.5/edcycle-1.0.5-mac.dmg"
                            }
                }
 }
