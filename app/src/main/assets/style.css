@@ -22,6 +22,7 @@ input, textarea { user-select: text; -webkit-user-select: text; }
   --nav-w: 220px; --bottom-h: 64px;
   --font: -apple-system,'Segoe UI',sans-serif;
   --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
   --bg-overlay: rgba(0,0,0,0.45);
   --accent-dark: #b55577;
@@ -72,7 +73,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-primar
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: calc(24px + var(--safe-t)) 16px calc(24px + var(--safe-b));
   background: var(--bg);
 }
 .auth-logo {
@@ -202,9 +203,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-primar
 
 .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .topbar {
-  height: 52px; flex-shrink: 0; background: var(--bg-card);
+  height: calc(52px + var(--safe-t)); flex-shrink: 0; background: var(--bg-card);
   border-bottom: 0.5px solid var(--border);
-  display: flex; align-items: center; padding: 0 16px; gap: 10px;
+  display: flex; align-items: center; padding: var(--safe-t) 16px 0; gap: 10px;
 }
 .topbar-title { font-size: 16px; font-weight: 700; flex: 1; }
 .topbar-btn {
@@ -259,7 +260,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-primar
   .bottom-nav { display: flex; }
   .tab-content { padding: 12px; padding-bottom: calc(12px + var(--safe-b)); }
   .main-area { min-height: 0; }
-  .topbar { height: 48px; padding: 0 12px; }
+  .topbar { height: calc(48px + var(--safe-t)); padding: var(--safe-t) 12px 0; }
   .topbar-btn { width: 34px; height: 34px; }
   .bottom-nav-item .nav-icon { font-size: 20px; }
   .settings-row .download-app-btn.compact { width: 100%; }
@@ -523,6 +524,22 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-primar
 
 .modal-footer { display: flex; gap: 8px; margin-top: 16px; }
 .modal-footer .btn { flex: 1; }
+
+.modal-page-nav {
+  display: flex; justify-content: center; gap: 8px; margin-bottom: 4px;
+}
+.modal-page-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border-hover); border: none; padding: 0; cursor: pointer;
+  transition: background .2s, transform .15s;
+}
+.modal-page-dot.active { background: var(--accent); transform: scale(1.25); }
+.modal-page-label {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  text-align: center; margin-bottom: 14px;
+}
+.modal-page-content { min-height: 80px; }
 
 /* ══════════════ PILL ══════════════ */
 .blister-grid {

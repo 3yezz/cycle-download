@@ -1,5 +1,5 @@
 ﻿const { createElement: h, useState, useEffect, useCallback, useMemo, useRef, Component } = React;
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 const API = 'https://e-d.fr';
 const RELEASE_MANIFEST_URL = `https://e-d.fr/cycle/releases.json?date=${Date.now()}`;
 const DOWNLOAD_FALLBACK_URL = 'https://github.com/3yezz/cycle-download/releases/latest';
@@ -1031,6 +1031,10 @@ const DatePicker = ({ value, onChange, placeholder = 'Sélectionner une date...'
 
 function SymptomModal({ dateStr, symptom, onSave, onClose }) {
   const [s, setS] = useState(() => ({ ...DEFAULT_SYMPTOM, ...symptom }));
+  const [page, setPage] = useState(0);
+  const TOTAL_PAGES = 4;
+  const PAGE_TITLES = ['Douleur', 'Cycle', 'Symptômes', 'Notes'];
+
   function upd(k, v) { setS(prev => ({ ...prev, [k]: v })); }
   const Toggle = ({ item }) =>
     h('button', {
@@ -1039,141 +1043,123 @@ function SymptomModal({ dateStr, symptom, onSave, onClose }) {
       onClick: () => upd(item.key, !s[item.key])
     }, inlineIcon(item.icon({ size: 14 }), item.label));
 
-  return h('div', { className: 'modal-overlay', onClick: onClose },
-    h('div', { className: 'modal-box', onClick: e => e.stopPropagation() },
-      h('div', { className: 'modal-handle' }),
-      h('div', { className: 'modal-title' }, `Symptômes du ${fmtDate(dateStr)}`),
-
-      h('div', { className: 'modal-section' },
+  function renderPage0() {
+    return [
+      h('div', { key: 'pain', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pain({ size: 14 }), 'Douleur')),
         h('div', { className: 'rating-row' },
           PAIN_LABELS.map((l, i) =>
-            h('div', {
-              key: i,
-              className: `rating-btn${s.pain === i ? ' active' : ''}`,
-              onClick: () => upd('pain', i),
-            }, l)
+            h('div', { key: i, className: `rating-btn${s.pain === i ? ' active' : ''}`, onClick: () => upd('pain', i) }, l)
           )
         )
       ),
-
-      h('div', { className: 'modal-section' },
+      h('div', { key: 'endo', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pain({ size: 14 }), 'Endométriose / crise')),
         h('div', { className: 'toggle-row' },
-          h('button', {
-            type: 'button',
-            className: `toggle-chip${s.endoFlare ? ' active' : ''}`,
-            onClick: () => upd('endoFlare', !s.endoFlare)
-          }, inlineIcon(Icon.alert({ size: 14 }), 'Crise endométriose')),
+          h('button', { key: 'flare', type: 'button', className: `toggle-chip${s.endoFlare ? ' active' : ''}`, onClick: () => upd('endoFlare', !s.endoFlare) }, inlineIcon(Icon.alert({ size: 14 }), 'Crise endométriose')),
           ENDO_PAIN_AREAS.map(item => h(Toggle, { key: item.key, item }))
         )
       ),
-
-      h('div', { className: 'modal-section modal-grid-2' },
+      h('div', { key: 'duration', className: 'modal-section modal-grid-2' },
         h('div', null,
           h('div', { className: 'modal-section-label' }, 'Durée douleur'),
-          h('input', {
-            className: 'inp',
-            placeholder: 'Ex : 2h, toute la journée',
-            value: s.painDuration || '',
-            onChange: e => upd('painDuration', e.target.value),
-          })
+          h('input', { className: 'inp', placeholder: 'Ex : 2h, toute la journée', value: s.painDuration || '', onChange: e => upd('painDuration', e.target.value) })
         ),
         h('div', null,
           h('div', { className: 'modal-section-label' }, 'Soulagement'),
-          h(CustomSelect, {
-            options: RELIEF_OPTIONS.map(o => ({ value: o.v, label: o.l })),
-            value: s.painRelief,
-            onChange: v => upd('painRelief', v)
-          })
+          h(CustomSelect, { options: RELIEF_OPTIONS.map(o => ({ value: o.v, label: o.l })), value: s.painRelief, onChange: v => upd('painRelief', v) })
         )
       ),
+    ];
+  }
 
-      h('div', { className: 'modal-section' },
+  function renderPage1() {
+    return [
+      h('div', { key: 'flux', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.waves({ size: 14 }), 'Flux')),
-        h(CustomSelect, {
-          options: FLOW_OPTIONS.map(o => ({ value: o.v, label: o.l })),
-          value: s.flow,
-          onChange: v => upd('flow', v)
-        })
+        h(CustomSelect, { options: FLOW_OPTIONS.map(o => ({ value: o.v, label: o.l })), value: s.flow, onChange: v => upd('flow', v) })
       ),
-
-      h('div', { className: 'modal-section' },
+      h('div', { key: 'mood', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.heart({ size: 14 }), 'Humeur')),
-        h(CustomSelect, {
-          options: MOOD_OPTIONS.map(o => ({ value: o.v, label: o.l })),
-          value: s.mood,
-          onChange: v => upd('mood', v)
-        })
+        h(CustomSelect, { options: MOOD_OPTIONS.map(o => ({ value: o.v, label: o.l })), value: s.mood, onChange: v => upd('mood', v) })
       ),
+      h('div', { key: 'fatigue', className: 'modal-section' },
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.moon({ size: 14 }), 'Fatigue')),
+        h('div', { className: 'rating-row' },
+          FATIGUE_LABELS.map((l, i) =>
+            h('div', { key: i, className: `rating-btn${Number(s.fatigueLevel || 0) === i ? ' active' : ''}`, onClick: () => upd('fatigueLevel', i) }, l)
+          )
+        )
+      ),
+      h('div', { key: 'impact', className: 'modal-section' },
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.flag({ size: 14 }), 'Impact quotidien')),
+        h(CustomSelect, { options: IMPACT_OPTIONS.map(o => ({ value: o.v, label: o.l })), value: s.impact || 'none', onChange: v => upd('impact', v) })
+      ),
+    ];
+  }
 
-      h('div', { className: 'modal-section' },
+  function renderPage2() {
+    return [
+      h('div', { key: 'digestive', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.waves({ size: 14 }), 'Digestif')),
         h('div', { className: 'toggle-row' },
           DIGESTIVE_SYMPTOMS.map(item => h(Toggle, { key: item.key, item }))
         )
       ),
-
-      h('div', { className: 'modal-section' },
+      h('div', { key: 'urinary', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.waves({ size: 14 }), 'Urinaire / intime')),
         h('div', { className: 'toggle-row' },
           URINARY_INTIMATE_SYMPTOMS.map(item => h(Toggle, { key: item.key, item }))
         )
       ),
-
-      h('div', { className: 'modal-section' },
+      h('div', { key: 'body', className: 'modal-section' },
         h('div', { className: 'modal-section-label' }, inlineIcon(Icon.headache({ size: 14 }), 'Corps')),
         h('div', { className: 'toggle-row' },
           BODY_SYMPTOMS.map(item => h(Toggle, { key: item.key, item }))
         )
       ),
+    ];
+  }
 
-      h('div', { className: 'modal-section' },
-        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.moon({ size: 14 }), 'Fatigue')),
-        h('div', { className: 'rating-row' },
-          FATIGUE_LABELS.map((l, i) =>
-            h('div', {
-              key: i,
-              className: `rating-btn${Number(s.fatigueLevel || 0) === i ? ' active' : ''}`,
-              onClick: () => upd('fatigueLevel', i),
-            }, l)
-          )
+  function renderPage3() {
+    return [
+      h('div', { key: 'treatment', className: 'modal-section' },
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pill({ size: 14 }), 'Traitement pris pendant la crise')),
+        h('input', { className: 'inp', placeholder: 'Ex : Spasfon, ibuprofène, bouillotte...', value: s.painMedication || '', onChange: e => upd('painMedication', e.target.value) })
+      ),
+      h('div', { key: 'notes', className: 'modal-section' },
+        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.note({ size: 14 }), 'Notes')),
+        h('textarea', { className: 'inp', style: { resize: 'vertical', minHeight: '60px', fontSize: '13px' }, placeholder: 'Notes libres…', value: s.notes, onChange: e => upd('notes', e.target.value) })
+      ),
+    ];
+  }
+
+  const PAGES_FN = [renderPage0, renderPage1, renderPage2, renderPage3];
+
+  return h('div', { className: 'modal-overlay', onClick: onClose },
+    h('div', { className: 'modal-box', onClick: e => e.stopPropagation() },
+      h('div', { className: 'modal-handle' }),
+      h('div', { className: 'modal-title' }, `Symptômes du ${fmtDate(dateStr)}`),
+      h('div', { className: 'modal-page-nav' },
+        Array.from({ length: TOTAL_PAGES }, (_, i) =>
+          h('button', {
+            key: i,
+            type: 'button',
+            className: `modal-page-dot${i === page ? ' active' : ''}`,
+            onClick: () => setPage(i),
+            title: PAGE_TITLES[i],
+          })
         )
       ),
-
-      h('div', { className: 'modal-section' },
-        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.flag({ size: 14 }), 'Impact quotidien')),
-        h(CustomSelect, {
-          options: IMPACT_OPTIONS.map(o => ({ value: o.v, label: o.l })),
-          value: s.impact || 'none',
-          onChange: v => upd('impact', v)
-        })
-      ),
-
-      h('div', { className: 'modal-section' },
-        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.pill({ size: 14 }), 'Traitement pris pendant la crise')),
-        h('input', {
-          className: 'inp',
-          placeholder: 'Ex : Spasfon, ibuprofène, bouillotte...',
-          value: s.painMedication || '',
-          onChange: e => upd('painMedication', e.target.value),
-        })
-      ),
-
-      h('div', { className: 'modal-section' },
-        h('div', { className: 'modal-section-label' }, inlineIcon(Icon.note({ size: 14 }), 'Notes')),
-        h('textarea', {
-          className: 'inp',
-          style: { resize: 'vertical', minHeight: '60px', fontSize: '13px' },
-          placeholder: 'Notes libres…',
-          value: s.notes,
-          onChange: e => upd('notes', e.target.value),
-        })
-      ),
-
+      h('div', { className: 'modal-page-label' }, PAGE_TITLES[page]),
+      h('div', { className: 'modal-page-content' }, ...PAGES_FN[page]()),
       h('div', { className: 'modal-footer' },
-        h('button', { className: 'btn btn-secondary', onClick: onClose }, 'Annuler'),
-        h('button', { className: 'btn btn-primary', onClick: () => onSave(s) }, 'Enregistrer')
+        page > 0
+          ? h('button', { className: 'btn btn-secondary', onClick: () => setPage(p => p - 1) }, '← Précédent')
+          : h('button', { className: 'btn btn-secondary', onClick: onClose }, 'Annuler'),
+        page < TOTAL_PAGES - 1
+          ? h('button', { className: 'btn btn-primary', onClick: () => setPage(p => p + 1) }, 'Suivant →')
+          : h('button', { className: 'btn btn-primary', onClick: () => onSave(s) }, 'Enregistrer')
       )
     )
   );
@@ -2296,5 +2282,6 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary, null, h(App)));
+
 
 
