@@ -1,5 +1,5 @@
 ﻿const { createElement: h, useState, useEffect, useCallback, useMemo, useRef, Component } = React;
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 const API = 'https://e-d.fr';
 const RELEASE_MANIFEST_URL = `https://e-d.fr/cycle/releases.json?date=${Date.now()}`;
 const DOWNLOAD_FALLBACK_URL = 'https://github.com/3yezz/cycle-download/releases/latest';
@@ -2015,22 +2015,28 @@ function SettingsTab({ data, onUpdate, theme, onThemeChange, storageKey }) {
   }
 
   function exportData() {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const filename = `edcycle-sauvegarde-${todayStr()}.json`;
+    const content = JSON.stringify(data, null, 2);
+    if (window.EDcycle?.shareFile) {
+      window.EDcycle.shareFile(filename, content, 'application/json');
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `edcycle-sauvegarde-${todayStr()}.json`;
-    a.click();
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   }
 
   function exportMedicalSummary() {
-    const blob = new Blob([buildMedicalSummary(data)], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    const filename = `edcycle-resume-medecin-${todayStr()}.txt`;
+    const content = buildMedicalSummary(data);
+    if (window.EDcycle?.shareFile) {
+      window.EDcycle.shareFile(filename, content, 'text/plain');
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `edcycle-resume-medecin-${todayStr()}.txt`;
-    a.click();
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -2369,6 +2375,7 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary, null, h(App)));
+
 
 
 

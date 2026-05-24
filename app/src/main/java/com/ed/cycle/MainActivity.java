@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -20,12 +21,20 @@ import android.webkit.WebViewClient;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.core.splashscreen.SplashScreen;
 import androidx.webkit.WebViewAssetLoader;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private View loadingLayout;
+    private ValueCallback<Uri[]> mFileChooserCallback;
+    private static final int REQUEST_FILE_CHOOSER = 301;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -40,9 +49,7 @@ public class MainActivity extends AppCompatActivity {
         loadingLayout.setVisibility(View.VISIBLE);
         webView.setVisibility(View.INVISIBLE);
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().hide();
-        }
+        if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         Window window = getWindow();
         window.setStatusBarColor(Color.TRANSPARENT);
@@ -63,7 +70,25 @@ public class MainActivity extends AppCompatActivity {
 
         webView.addJavascriptInterface(new WebAppInterface(), "EDcycle");
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        webView.setWebChromeClient(new WebChromeClient());
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePathCallback,
+                                             FileChooserParams fileChooserParams) {
+                if (mFileChooserCallback != null) {
+                    mFileChooserCallback.onReceiveValue(null);
+                }
+                mFileChooserCallback = filePathCallback;
+                Intent intent = fileChooserParams.createIntent();
+                try {
+                    startActivityForResult(intent, REQUEST_FILE_CHOOSER);
+                } catch (Exception e) {
+                    mFileChooserCallback = null;
+                    return false;
+                }
+                return true;
+            }
+        });
 
         WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
@@ -77,7 +102,6 @@ public class MainActivity extends AppCompatActivity {
                 if ("appassets.androidplatform.net".equals(host) || (host != null && host.endsWith("e-d.fr"))) {
                     return false;
                 }
-
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, uri));
                 } catch (Exception ignored) {}
@@ -119,6 +143,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_FILE_CHOOSER) {
+            if (mFileChooserCallback == null) return;
+            Uri[] results = null;
+            if (resultCode == RESULT_OK && data != null) {
+                String dataString = data.getDataString();
+                if (dataString != null) {
+                    results = new Uri[]{ Uri.parse(dataString) };
+                }
+            }
+            mFileChooserCallback.onReceiveValue(results);
+            mFileChooserCallback = null;
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         SharedPreferences prefs = getSharedPreferences(PillActionReceiver.PREFS_ACTIONS, MODE_PRIVATE);
@@ -134,9 +175,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        if (webView != null) {
-            webView.saveState(outState);
-        }
+        if (webView != null) webView.saveState(outState);
     }
 
     public class WebAppInterface {
@@ -148,23 +187,33 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public void shareFile(String filename, String content, String mimeType) {
+            try {
+                File file = new File(getCacheDir(), filename);
+                try (FileWriter fw = new FileWriter(file)) { fw.write(content); }
+                Uri uri = FileProvider.getUriForFile(MainActivity.this, "com.ed.cycle.fileprovider", file);
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setType(mimeType);
+                intent.putExtra(Intent.EXTRA_STREAM, uri);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                runOnUiThread(() -> startActivity(Intent.createChooser(intent, "Enregistrer " + filename)));
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
         public void scheduleReminder(String timeStr) {
             try {
                 String[] parts = timeStr.split(":");
                 int hour = Integer.parseInt(parts[0]);
                 int minute = Integer.parseInt(parts[1]);
-
                 SharedPreferences prefs = getSharedPreferences(BootReceiver.PREFS_CONFIG, MODE_PRIVATE);
                 prefs.edit().putInt("hour", hour).putInt("minute", minute)
                         .putBoolean("enabled", true).apply();
-
                 PillReminderReceiver.schedule(MainActivity.this, hour, minute);
-
                 if (Build.VERSION.SDK_INT >= 33) {
                     if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                             != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        requestPermissions(
-                                new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 200);
+                        requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 200);
                     }
                 }
             } catch (Exception ignored) {}
