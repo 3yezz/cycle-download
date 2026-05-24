@@ -10,8 +10,8 @@ android {
         applicationId = "com.ed.cycle"
         minSdk = 27
         targetSdk = 35
-        versionCode = 10003
-        versionName = "1.0.3"
+        versionCode = 10004
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -42,6 +42,7 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 }
+
 
 
 
