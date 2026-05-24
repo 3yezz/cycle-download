@@ -1,0 +1,19 @@
+{
+  "name": "EDcycle",
+  "short_name": "EDcycle",
+  "description": "Gestion du cycle féminin et de la pilule",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f4f0",
+  "theme_color": "#d4678a",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "utilities"]
+}
